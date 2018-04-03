@@ -15,6 +15,10 @@ contract Splitter {
         return SplitDeposit(recipientOne,recipientTwo,msg.value);
     }
 
+    function kill() public {
+        selfdestruct(msg.sender);
+    }
+
     function SplitDeposit(address beneficiaryOne, address beneficiaryTwo, uint totalDeposit) internal returns (bool) {
         uint depositPerAccount = totalDeposit/2;
         balances[beneficiaryOne] += depositPerAccount;
