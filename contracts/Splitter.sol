@@ -2,11 +2,13 @@ pragma solidity ^0.4.6;
 
 contract Splitter {
     mapping (address => uint) balances;
+    address owner;
 
     event LogDeposit(address beneficiary, uint amount);
     event LogWithdrawal(address beneficiary, uint amount);
 
     function Splitter() {
+        owner = msg.sender;
     }
 
     function DepositEther(address recipientOne, address recipientTwo) public payable returns (bool) {
@@ -16,15 +18,21 @@ contract Splitter {
     }
 
     function kill() public {
+        require(owner==msg.sender);
+
         selfdestruct(msg.sender);
     }
 
     function SplitDeposit(address beneficiaryOne, address beneficiaryTwo, uint totalDeposit) internal returns (bool) {
+        require(totalDeposit > 0);
+        
         uint depositPerAccount = totalDeposit/2;
+        uint depositPerAccountRemainder = totalDeposit % 2;
         balances[beneficiaryOne] += depositPerAccount;
         LogDeposit(beneficiaryOne,depositPerAccount);
         balances[beneficiaryTwo] += depositPerAccount;    
         LogDeposit(beneficiaryTwo,depositPerAccount);
+        balances[msg.sender] += depositPerAccountRemainder;
 
         return true;  
     }
