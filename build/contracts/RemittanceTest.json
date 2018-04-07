@@ -1,0 +1,315 @@
+{
+  "contractName": "RemittanceTest",
+  "abi": [
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "name": "input",
+          "type": "string"
+        },
+        {
+          "name": "validAccount",
+          "type": "address"
+        }
+      ],
+      "name": "GetHash",
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "pure",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6060604052341561000f57600080fd5b6101ba8061001e6000396000f300606060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063eb9f9c3614610046575b600080fd5b341561005157600080fd5b6100c0600480803590602001908201803590602001908080601f0160208091040260200160405190810160405280939291908181526020018383808284378201915050505050509190803573ffffffffffffffffffffffffffffffffffffffff169060200190919050506100de565b60405180826000191660001916815260200191505060405180910390f35b600082826040518083805190602001908083835b60208310151561011757805182526020820191506020810190506020830392506100f2565b6001836020036101000a0380198251168184511680821785525050505050509050018273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff166c010000000000000000000000000281526014019250505060405180910390209050929150505600a165627a7a723058203ce2c323d6748f19f5fade7fbfc3c9d0b65a12d0b0daf6bcb4001b404ac2fefa0029",
+  "deployedBytecode": "0x606060405260043610610041576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063eb9f9c3614610046575b600080fd5b341561005157600080fd5b6100c0600480803590602001908201803590602001908080601f0160208091040260200160405190810160405280939291908181526020018383808284378201915050505050509190803573ffffffffffffffffffffffffffffffffffffffff169060200190919050506100de565b60405180826000191660001916815260200191505060405180910390f35b600082826040518083805190602001908083835b60208310151561011757805182526020820191506020810190506020830392506100f2565b6001836020036101000a0380198251168184511680821785525050505050509050018273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff166c010000000000000000000000000281526014019250505060405180910390209050929150505600a165627a7a723058203ce2c323d6748f19f5fade7fbfc3c9d0b65a12d0b0daf6bcb4001b404ac2fefa0029",
+  "sourceMap": "27:174:0:-;;;;;;;;;;;;;;;;;",
+  "deployedSourceMap": "27:174:0:-;;;;;;;;;;;;;;;;;;;;;;;;58:140;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;132:7;170:5;176:12;160:29;;;;;;;;;;;;;36:153:-1;66:2;61:3;58:2;51:6;36:153;;;182:3;176:5;171:3;164:6;98:2;93:3;89;82:19;;123:2;118:3;114;107:19;;148:2;143:3;139;132:19;;36:153;;;274:1;267:3;263:2;259:3;254;250;246;315:4;311:3;305;299:5;295:3;356:4;350:3;344:5;340:3;389:7;380;377:2;372:3;365:6;3:399;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;152:38:0;;58:140;;;;:::o",
+  "source": "pragma solidity ^0.4.6;\r\n\r\ncontract RemittanceTest {\r\n    function GetHash(string input, address validAccount) public pure returns (bytes32) {\r\n        return (keccak256(input,validAccount));\r\n    }\r\n}",
+  "sourcePath": "C:\\dapps\\B9LabClass\\contracts\\RemittanceTest.sol",
+  "ast": {
+    "attributes": {
+      "absolutePath": "/C/dapps/B9LabClass/contracts/RemittanceTest.sol",
+      "exportedSymbols": {
+        "RemittanceTest": [
+          18
+        ]
+      }
+    },
+    "children": [
+      {
+        "attributes": {
+          "literals": [
+            "solidity",
+            "^",
+            "0.4",
+            ".6"
+          ]
+        },
+        "id": 1,
+        "name": "PragmaDirective",
+        "src": "0:23:0"
+      },
+      {
+        "attributes": {
+          "baseContracts": [
+            null
+          ],
+          "contractDependencies": [
+            null
+          ],
+          "contractKind": "contract",
+          "documentation": null,
+          "fullyImplemented": true,
+          "linearizedBaseContracts": [
+            18
+          ],
+          "name": "RemittanceTest",
+          "scope": 19
+        },
+        "children": [
+          {
+            "attributes": {
+              "constant": true,
+              "implemented": true,
+              "isConstructor": false,
+              "modifiers": [
+                null
+              ],
+              "name": "GetHash",
+              "payable": false,
+              "scope": 18,
+              "stateMutability": "pure",
+              "superFunction": null,
+              "visibility": "public"
+            },
+            "children": [
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "input",
+                      "scope": 17,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "string memory",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "string",
+                          "type": "string storage pointer"
+                        },
+                        "id": 2,
+                        "name": "ElementaryTypeName",
+                        "src": "75:6:0"
+                      }
+                    ],
+                    "id": 3,
+                    "name": "VariableDeclaration",
+                    "src": "75:12:0"
+                  },
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "validAccount",
+                      "scope": 17,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "address",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "address",
+                          "type": "address"
+                        },
+                        "id": 4,
+                        "name": "ElementaryTypeName",
+                        "src": "89:7:0"
+                      }
+                    ],
+                    "id": 5,
+                    "name": "VariableDeclaration",
+                    "src": "89:20:0"
+                  }
+                ],
+                "id": 6,
+                "name": "ParameterList",
+                "src": "74:36:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "constant": false,
+                      "name": "",
+                      "scope": 17,
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "type": "bytes32",
+                      "value": null,
+                      "visibility": "internal"
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "name": "bytes32",
+                          "type": "bytes32"
+                        },
+                        "id": 7,
+                        "name": "ElementaryTypeName",
+                        "src": "132:7:0"
+                      }
+                    ],
+                    "id": 8,
+                    "name": "VariableDeclaration",
+                    "src": "132:7:0"
+                  }
+                ],
+                "id": 9,
+                "name": "ParameterList",
+                "src": "131:9:0"
+              },
+              {
+                "children": [
+                  {
+                    "attributes": {
+                      "functionReturnParameters": 9
+                    },
+                    "children": [
+                      {
+                        "attributes": {
+                          "argumentTypes": null,
+                          "isConstant": false,
+                          "isInlineArray": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "type": "bytes32"
+                        },
+                        "children": [
+                          {
+                            "attributes": {
+                              "argumentTypes": null,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "isStructConstructorCall": false,
+                              "lValueRequested": false,
+                              "names": [
+                                null
+                              ],
+                              "type": "bytes32",
+                              "type_conversion": false
+                            },
+                            "children": [
+                              {
+                                "attributes": {
+                                  "argumentTypes": [
+                                    {
+                                      "typeIdentifier": "t_string_memory_ptr",
+                                      "typeString": "string memory"
+                                    },
+                                    {
+                                      "typeIdentifier": "t_address",
+                                      "typeString": "address"
+                                    }
+                                  ],
+                                  "overloadedDeclarations": [
+                                    null
+                                  ],
+                                  "referencedDeclaration": 24,
+                                  "type": "function () pure returns (bytes32)",
+                                  "value": "keccak256"
+                                },
+                                "id": 10,
+                                "name": "Identifier",
+                                "src": "160:9:0"
+                              },
+                              {
+                                "attributes": {
+                                  "argumentTypes": null,
+                                  "overloadedDeclarations": [
+                                    null
+                                  ],
+                                  "referencedDeclaration": 3,
+                                  "type": "string memory",
+                                  "value": "input"
+                                },
+                                "id": 11,
+                                "name": "Identifier",
+                                "src": "170:5:0"
+                              },
+                              {
+                                "attributes": {
+                                  "argumentTypes": null,
+                                  "overloadedDeclarations": [
+                                    null
+                                  ],
+                                  "referencedDeclaration": 5,
+                                  "type": "address",
+                                  "value": "validAccount"
+                                },
+                                "id": 12,
+                                "name": "Identifier",
+                                "src": "176:12:0"
+                              }
+                            ],
+                            "id": 13,
+                            "name": "FunctionCall",
+                            "src": "160:29:0"
+                          }
+                        ],
+                        "id": 14,
+                        "name": "TupleExpression",
+                        "src": "159:31:0"
+                      }
+                    ],
+                    "id": 15,
+                    "name": "Return",
+                    "src": "152:38:0"
+                  }
+                ],
+                "id": 16,
+                "name": "Block",
+                "src": "141:57:0"
+              }
+            ],
+            "id": 17,
+            "name": "FunctionDefinition",
+            "src": "58:140:0"
+          }
+        ],
+        "id": 18,
+        "name": "ContractDefinition",
+        "src": "27:174:0"
+      }
+    ],
+    "id": 19,
+    "name": "SourceUnit",
+    "src": "0:201:0"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.4.19+commit.c4cbbb05.Emscripten.clang"
+  },
+  "networks": {
+    "5777": {
+      "events": {},
+      "links": {},
+      "address": "0x8f0483125fcb9aaaefa9209d8e9d7b9c8b9fb90f"
+    }
+  },
+  "schemaVersion": "1.0.1",
+  "updatedAt": "2018-04-07T22:59:15.294Z"
+}

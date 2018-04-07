@@ -3,12 +3,14 @@ pragma solidity ^0.4.6;
 contract Splitter {
     mapping (address => uint) balances;
     address owner;
+    bool transferInProgress;
 
     event LogDeposit(address beneficiary, uint amount);
     event LogWithdrawal(address beneficiary, uint amount);
 
     function Splitter() {
         owner = msg.sender;
+        transferInProgress = false;
     }
 
     function DepositEther(address recipientOne, address recipientTwo) public payable returns (bool) {
@@ -33,18 +35,27 @@ contract Splitter {
         balances[beneficiaryTwo] += depositPerAccount;    
         LogDeposit(beneficiaryTwo,depositPerAccount);
         balances[msg.sender] += depositPerAccountRemainder;
+        LogDeposit(msg.sender,depositPerAccountRemainder);
 
         return true;  
     }
 
-    function WithdrawBalance() public returns (bool) {
+    modifier preventRecursion() {
+        if(transferInProgress == false) {
+            transferInProgress = true;
+
+            _;
+
+            transferInProgress = false;
+        }
+    }
+
+    function WithdrawBalance() public preventRecursion returns (bool) {
         require(balances[msg.sender] > 0);
 
-        if (msg.sender.send(balances[msg.sender])) {
-            uint withdrawalAmount = balances[msg.sender];
-            balances[msg.sender] = 0;
-            LogWithdrawal(msg.sender,withdrawalAmount);
-        }
+        msg.sender.transfer(balances[msg.sender]);
+        LogWithdrawal(msg.sender,balances[msg.sender]);
+        balances[msg.sender] = 0;
 
         return true;
     }
