@@ -3,9 +3,8 @@ pragma solidity ^0.4.6;
 contract Remittance {
     address owner;
     uint public ownerBalance;
-    bool transferInProgress;
     uint deadlineLimit = 10;
-    uint serviceFee = 0.0007255 ether;
+    uint serviceFee = 7255 wei;
 
     struct remittanceStruct {
         address remitter;
@@ -17,17 +16,6 @@ contract Remittance {
 
     function Remittance() public {
         owner = msg.sender;
-        transferInProgress = false;
-    }
-
-    modifier preventRecursion() {
-        if(transferInProgress == false) {
-            transferInProgress = true;
-
-            _;
-
-            transferInProgress = false;
-        }
     }
 
     function CreateRemittance(bytes32 hashValue, uint deadline) public payable returns (bool) {
@@ -45,40 +33,41 @@ contract Remittance {
         return (true);
     }
 
-    function ClaimRemittanceFunds(string passCode) public preventRecursion returns (bool) {
+    function ClaimRemittanceFunds(string passCode) public returns (bool) {
         bytes32 _hashKey = keccak256(passCode,msg.sender);
 
         remittanceStruct memory remittanceRecord = remittanceRecords[_hashKey];
         require(remittanceRecord.amount > 0);
         require(block.number <= remittanceRecord.deadline);
 
-        msg.sender.transfer(remittanceRecord.amount);
-
         remittanceRecords[_hashKey].amount = 0;
+
+        msg.sender.transfer(remittanceRecord.amount);
 
         return (true);
     }
 
-    function ReclaimFunds(bytes32 hashValue) public preventRecursion returns (bool) {
+    function ReclaimFunds(bytes32 hashValue) public returns (bool) {
         remittanceStruct memory remittanceRecord = remittanceRecords[hashValue];
         require(remittanceRecord.remitter == msg.sender);
         require(remittanceRecord.amount > 0);
         require(block.number > remittanceRecord.deadline);
 
-        msg.sender.transfer(remittanceRecord.amount);
-
         remittanceRecords[hashValue].amount = 0;
+
+        msg.sender.transfer(remittanceRecord.amount);
 
         return (true);
     }
 
-    function ClaimFees() public preventRecursion returns (bool) {
+    function ClaimFees() public returns (bool) {
         require(owner==msg.sender);
         require(ownerBalance > 0);
 
-        msg.sender.transfer(ownerBalance);
-
+        uint _feeToSend = ownerBalance;
         ownerBalance = 0;
+
+        msg.sender.transfer(_feeToSend);
 
         return (true);
     }
