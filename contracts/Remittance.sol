@@ -5,6 +5,7 @@ contract Remittance {
     uint public ownerBalance;
     uint deadlineLimit = 10;
     uint serviceFee = 7255 wei;
+    bool isActive;
 
     struct remittanceStruct {
         address remitter;
@@ -16,9 +17,16 @@ contract Remittance {
 
     function Remittance() public {
         owner = msg.sender;
+        isActive = true;
     }
 
-    function CreateRemittance(bytes32 hashValue, uint deadline) public payable returns (bool) {
+    modifier isActiveContract() {
+        require(isActive);
+
+        _;
+    }
+
+    function CreateRemittance(bytes32 hashValue, uint deadline) public payable isActiveContract returns (bool) {
         require(msg.value > serviceFee);
         require(deadline < deadlineLimit);
         
@@ -33,7 +41,7 @@ contract Remittance {
         return (true);
     }
 
-    function ClaimRemittanceFunds(string passCode) public returns (bool) {
+    function ClaimRemittanceFunds(string passCode) public isActiveContract returns (bool) {
         bytes32 _hashKey = keccak256(passCode,msg.sender);
 
         remittanceStruct memory remittanceRecord = remittanceRecords[_hashKey];
@@ -47,7 +55,7 @@ contract Remittance {
         return (true);
     }
 
-    function ReclaimFunds(bytes32 hashValue) public returns (bool) {
+    function ReclaimFunds(bytes32 hashValue) public isActiveContract returns (bool) {
         remittanceStruct memory remittanceRecord = remittanceRecords[hashValue];
         require(remittanceRecord.remitter == msg.sender);
         require(remittanceRecord.amount > 0);
@@ -60,7 +68,7 @@ contract Remittance {
         return (true);
     }
 
-    function ClaimFees() public returns (bool) {
+    function ClaimFees() public isActiveContract returns (bool) {
         require(owner==msg.sender);
         require(ownerBalance > 0);
 
@@ -72,9 +80,11 @@ contract Remittance {
         return (true);
     }
 
-    function kill() public {
+    function toggleActiveContract(bool _isActive) public returns (bool) {
         require(owner==msg.sender);
 
-        selfdestruct(msg.sender);
+        isActive = _isActive;
+
+        return (true);
     }    
 }
