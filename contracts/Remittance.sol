@@ -26,11 +26,19 @@ contract Remittance {
         _;
     }
 
+    function CheckRemittance(bytes32 hashValue) public view isActiveContract returns (address,uint,uint) {
+        remittanceStruct memory remittanceRecord = remittanceRecords[hashValue];
+        return (remittanceRecord.remitter, remittanceRecord.deadline, remittanceRecord.amount);
+    }
+
     function CreateRemittance(bytes32 hashValue, uint deadline) public payable isActiveContract returns (bool) {
         require(msg.value > serviceFee);
         require(deadline < deadlineLimit);
+        require(deadline > 0);
         
-        remittanceStruct memory remittanceRecord;
+        remittanceStruct memory remittanceRecord = remittanceRecords[hashValue];
+        require(remittanceRecord.deadline == 0);
+        
         remittanceRecord.remitter = msg.sender;
         remittanceRecord.deadline = block.number + deadline;
         remittanceRecord.amount += msg.value - serviceFee;
