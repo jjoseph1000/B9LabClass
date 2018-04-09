@@ -15,6 +15,13 @@ contract Remittance {
 
     mapping (bytes32 => remittanceStruct) remittanceRecords;
 
+    event RemittanceCreated(bytes32 hashValue, address remitter, uint deadline, uint amount);
+    event ServiceFeeCharged(uint amount);
+    event RemittanceClaimed(bytes32 hashValue, address recipient, uint amount);
+    event RemittanceRefunded(bytes32 hashValue, address remitter, uint amount);
+    event ServiceFeeReceived(uint amount);
+    event ContractActiveStatusChanged(bool status);
+
     function Remittance() public {
         owner = msg.sender;
         isActive = true;
@@ -38,13 +45,15 @@ contract Remittance {
         
         remittanceStruct memory remittanceRecord = remittanceRecords[hashValue];
         require(remittanceRecord.deadline == 0);
-        
+
         remittanceRecord.remitter = msg.sender;
         remittanceRecord.deadline = block.number + deadline;
         remittanceRecord.amount += msg.value - serviceFee;
-        ownerBalance += serviceFee;
 
         remittanceRecords[hashValue] = remittanceRecord;
+        RemittanceCreated(hashValue,remittanceRecord.remitter,remittanceRecord.deadline,remittanceRecord.amount);
+        ownerBalance += serviceFee;
+        ServiceFeeCharged(serviceFee);
 
         return (true);
     }
@@ -59,6 +68,7 @@ contract Remittance {
         remittanceRecords[_hashKey].amount = 0;
 
         msg.sender.transfer(remittanceRecord.amount);
+        RemittanceClaimed(_hashKey,msg.sender,remittanceRecord.amount);
 
         return (true);
     }
@@ -72,6 +82,7 @@ contract Remittance {
         remittanceRecords[hashValue].amount = 0;
 
         msg.sender.transfer(remittanceRecord.amount);
+        RemittanceRefunded(hashValue,msg.sender,remittanceRecord.amount);
 
         return (true);
     }
@@ -84,6 +95,7 @@ contract Remittance {
         ownerBalance = 0;
 
         msg.sender.transfer(_feeToSend);
+        ServiceFeeReceived(_feeToSend);
 
         return (true);
     }
@@ -92,6 +104,7 @@ contract Remittance {
         require(owner==msg.sender);
 
         isActive = _isActive;
+        ContractActiveStatusChanged(_isActive);
 
         return (true);
     }    
