@@ -1,11 +1,11 @@
 pragma solidity ^0.4.6;
 
 contract Remittance {
-    address owner;
-    uint public ownerBalance;
-    uint deadlineLimit = 10;
+    address public owner;
+    uint deadlineLimit = 40320;
     uint serviceFee = 7255 wei;
     bool isActive;
+    mapping (address => uint) unclaimedFeePayment;
 
     struct remittanceStruct {
         address remitter;
@@ -15,16 +15,16 @@ contract Remittance {
 
     mapping (bytes32 => remittanceStruct) remittanceRecords;
 
-    event RemittanceCreated(bytes32 hashValue, address remitter, uint deadline, uint amount);
-    event ServiceFeeCharged(uint amount);
-    event RemittanceClaimed(bytes32 hashValue, address recipient, uint amount);
-    event RemittanceRefunded(bytes32 hashValue, address remitter, uint amount);
-    event ServiceFeeReceived(uint amount);
-    event ContractActiveStatusChanged(bool status);
+    event LogRemittanceCreated(bytes32 hashValue, address remitter, uint deadline, uint amount, address feeRecipient, uint feeAmount);
+    event LogRemittanceClaimed(bytes32 hashValue, address recipient, uint amount);
+    event LogRemittanceRefunded(bytes32 hashValue, address remitter, uint amount);
+    event LogServiceFeeReceived(address feeRecipient, uint amount);
+    event LogContractActiveStatusChanged(bool status);
+    event LogOwnershipTransferred(address owner, address newOwner);
 
-    function Remittance() public {
+    function Remittance(bool _isActive) public {
         owner = msg.sender;
-        isActive = true;
+        isActive = _isActive;
     }
 
     modifier isActiveContract() {
@@ -33,12 +33,12 @@ contract Remittance {
         _;
     }
 
-    function CheckRemittance(bytes32 hashValue) public view isActiveContract returns (address,uint,uint) {
+    function checkRemittance(bytes32 hashValue) public view isActiveContract returns (address remitter,uint deadline,uint amount) {
         remittanceStruct memory remittanceRecord = remittanceRecords[hashValue];
         return (remittanceRecord.remitter, remittanceRecord.deadline, remittanceRecord.amount);
     }
 
-    function CreateRemittance(bytes32 hashValue, uint deadline) public payable isActiveContract returns (bool) {
+    function createRemittance(bytes32 hashValue, uint deadline) public payable isActiveContract returns (bool success) {
         require(msg.value > serviceFee);
         require(deadline < deadlineLimit);
         require(deadline > 0);
@@ -48,32 +48,31 @@ contract Remittance {
 
         remittanceRecord.remitter = msg.sender;
         remittanceRecord.deadline = block.number + deadline;
-        remittanceRecord.amount += msg.value - serviceFee;
+        remittanceRecord.amount = msg.value - serviceFee;
 
         remittanceRecords[hashValue] = remittanceRecord;
-        RemittanceCreated(hashValue,remittanceRecord.remitter,remittanceRecord.deadline,remittanceRecord.amount);
-        ownerBalance += serviceFee;
-        ServiceFeeCharged(serviceFee);
+        LogRemittanceCreated(hashValue,remittanceRecord.remitter,remittanceRecord.deadline,remittanceRecord.amount,owner,serviceFee);
+        unclaimedFeePayment[owner] += serviceFee;
 
         return (true);
     }
 
-    function ClaimRemittanceFunds(string passCode) public isActiveContract returns (bool) {
+    function claimRemittanceFunds(string passCode) public isActiveContract returns (bool success) {
         bytes32 _hashKey = keccak256(passCode,msg.sender);
 
-        remittanceStruct memory remittanceRecord = remittanceRecords[_hashKey];
-        require(remittanceRecord.amount > 0);
-        require(block.number <= remittanceRecord.deadline);
+        require(remittanceRecords[_hashKey].amount > 0);
+        require(block.number <= remittanceRecords[_hashKey].deadline);
 
+        uint remittanceAmount = remittanceRecords[_hashKey].amount;
         remittanceRecords[_hashKey].amount = 0;
 
-        msg.sender.transfer(remittanceRecord.amount);
-        RemittanceClaimed(_hashKey,msg.sender,remittanceRecord.amount);
+        msg.sender.transfer(remittanceAmount);
+        LogRemittanceClaimed(_hashKey,msg.sender,remittanceRecords[_hashKey].amount);
 
         return (true);
     }
 
-    function ReclaimFunds(bytes32 hashValue) public isActiveContract returns (bool) {
+    function reclaimFunds(bytes32 hashValue) public isActiveContract returns (bool success) {
         remittanceStruct memory remittanceRecord = remittanceRecords[hashValue];
         require(remittanceRecord.remitter == msg.sender);
         require(remittanceRecord.amount > 0);
@@ -82,29 +81,39 @@ contract Remittance {
         remittanceRecords[hashValue].amount = 0;
 
         msg.sender.transfer(remittanceRecord.amount);
-        RemittanceRefunded(hashValue,msg.sender,remittanceRecord.amount);
+        LogRemittanceRefunded(hashValue,msg.sender,remittanceRecord.amount);
 
         return (true);
     }
 
-    function ClaimFees() public isActiveContract returns (bool) {
-        require(owner==msg.sender);
-        require(ownerBalance > 0);
+    function claimFees() public isActiveContract returns (bool success) {
+        require(unclaimedFeePayment[msg.sender] > 0);
 
-        uint _feeToSend = ownerBalance;
-        ownerBalance = 0;
+        uint _feeToSend = unclaimedFeePayment[msg.sender];
+        unclaimedFeePayment[msg.sender] = 0;
 
         msg.sender.transfer(_feeToSend);
-        ServiceFeeReceived(_feeToSend);
+        LogServiceFeeReceived(msg.sender,_feeToSend);
 
         return (true);
     }
 
-    function toggleActiveContract(bool _isActive) public returns (bool) {
+    function getHash(string input, address validAccount) public pure returns (bytes32 hashResult) {
+        return (keccak256(input,validAccount));
+    }
+
+    function transferOwnership(address newOwner) public {
+        require(msg.sender == owner);
+        require(newOwner != address(0));
+        LogOwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }
+
+    function toggleActiveContract(bool _isActive) public returns (bool success) {
         require(owner==msg.sender);
 
         isActive = _isActive;
-        ContractActiveStatusChanged(_isActive);
+        LogContractActiveStatusChanged(_isActive);
 
         return (true);
     }    
