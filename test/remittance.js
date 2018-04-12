@@ -18,20 +18,28 @@ var RemittanceTest = artifacts.require("./RemittanceTest.sol");
     });
 
     it("should be able to create a remittance", function() {
-        var remitter = accounts[1];
-        var recipient = accounts[2];
-        var falseReceiver = accounts[3];
-        var passCode = "hello";
-        var fakePasscode = "goodbye";
-        var byteValue;
+        var remitter1 = accounts[1];
+        var recipient1 = accounts[2];
+        var falseReceiver1 = accounts[3];
+        var passCode1 = "hello";
+        var fakePasscode1 = "goodbye";
 
-        return remittancetest.GetHash(passCode,recipient)
-        .then(function(_byteValue){
-            byteValue = _byteValue;
-            return remittance.CreateRemittance(byteValue,8,{from:remitter,value:web3.toWei(30,"ether")})
+        
+
+        return remittancetest.GetHash(passCode1,recipient1)
+        .then(function(_hashString){
+            hashString = _hashString;
+            var hashByte = new String(hashString);
+            return remittance.CreateRemittance(hashByte.valueOf(),8,{from:remitter1,value:web3.toWei(30,"ether")})
             .then(function(success){
-                assert.strictEqual(success,true,"Not successful creation of remittance");
+                return remittance.ClaimRemittanceFunds(passCode1,{from:recipient1});
             })
+            .then(function(success){
+                return remittance.ClaimRemittanceFunds(passCode1,{from:recipient1});
+            })
+            .then(function(success){
+
+            });
         });
     });  
  });
