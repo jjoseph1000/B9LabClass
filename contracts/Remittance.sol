@@ -1,10 +1,11 @@
 pragma solidity ^0.4.6;
 
-contract Remittance {
-    address public owner;
+import "./Ownable.sol";
+import "./ActiveState.sol";
+
+contract Remittance is Ownable, ActiveState {
     uint deadlineLimit = 40320;
     uint serviceFee = 7255 wei;
-    bool isActive;
     mapping (address => uint) unclaimedFeePayment;
 
     struct remittanceStruct {
@@ -19,21 +20,13 @@ contract Remittance {
     event LogRemittanceClaimed(bytes32 hashValue, address recipient, uint amount);
     event LogRemittanceRefunded(bytes32 hashValue, address remitter, uint amount);
     event LogServiceFeeReceived(address feeRecipient, uint amount);
-    event LogContractActiveStatusChanged(bool status);
-    event LogOwnershipTransferred(address owner, address newOwner);
 
     function Remittance(bool _isActive) public {
         owner = msg.sender;
         isActive = _isActive;
     }
 
-    modifier isActiveContract() {
-        require(isActive);
-
-        _;
-    }
-
-    function checkRemittance(bytes32 hashValue) public view isActiveContract returns (address remitter,uint deadline,uint amount) {
+    function getRemittance(bytes32 hashValue) public view isActiveContract returns (address remitter,uint deadline,uint amount) {
         remittanceStruct memory remittanceRecord = remittanceRecords[hashValue];
         return (remittanceRecord.remitter, remittanceRecord.deadline, remittanceRecord.amount);
     }
@@ -101,20 +94,4 @@ contract Remittance {
     function getHash(string input, address validAccount) public pure returns (bytes32 hashResult) {
         return (keccak256(input,validAccount));
     }
-
-    function transferOwnership(address newOwner) public {
-        require(msg.sender == owner);
-        require(newOwner != address(0));
-        LogOwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
-
-    function toggleActiveContract(bool _isActive) public returns (bool success) {
-        require(owner==msg.sender);
-
-        isActive = _isActive;
-        LogContractActiveStatusChanged(_isActive);
-
-        return (true);
-    }    
 }

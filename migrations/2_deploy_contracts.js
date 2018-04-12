@@ -16,7 +16,7 @@ module.exports = function(deployer) {
   // deployer.deploy(Mod4PopQuiz2,50,100);
   deployer.deploy(MyContract,50,100);
   //deployer.deploy(Splitter);
-  deployer.deploy(Remittance);
+  deployer.deploy(Remittance,true);
   deployer.deploy(RemittanceTest);
   deployer.deploy(ControlledAccessDonation);
 };
