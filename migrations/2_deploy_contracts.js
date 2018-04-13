@@ -7,6 +7,7 @@ var Splitter = artifacts.require("./Splitter.sol");
 var Remittance = artifacts.require("./Remittance.sol");
 var ControlledAccessDonation = artifacts.require("./ControlledAccessDonation.sol");
 var RemittanceTest = artifacts.require("./RemittanceTest.sol");
+var RockPaperScissors = artifacts.require("./RockPaperScissors.sol");
 
 module.exports = function(deployer) {
   // deployer.deploy(ConvertLib);
@@ -19,4 +20,5 @@ module.exports = function(deployer) {
   deployer.deploy(Remittance,true);
   deployer.deploy(RemittanceTest);
   deployer.deploy(ControlledAccessDonation);
+  deployer.deploy(RockPaperScissors,true);
 };

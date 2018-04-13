@@ -8,7 +8,8 @@ contract ActiveState is Ownable {
 
     event LogContractActiveStatusChanged(bool status);
 
-    function ActiveState() public {
+    function ActiveState(bool _isActive) public {
+      isActive = _isActive;
     }
 
     modifier isActiveContract() {

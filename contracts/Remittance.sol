@@ -1,9 +1,8 @@
 pragma solidity ^0.4.6;
 
-import "./Ownable.sol";
 import "./ActiveState.sol";
 
-contract Remittance is Ownable, ActiveState {
+contract Remittance is ActiveState {
     uint deadlineLimit = 40320;
     uint serviceFee = 7255 wei;
     mapping (address => uint) unclaimedFeePayment;
@@ -21,9 +20,7 @@ contract Remittance is Ownable, ActiveState {
     event LogRemittanceRefunded(bytes32 hashValue, address remitter, uint amount);
     event LogServiceFeeReceived(address feeRecipient, uint amount);
 
-    function Remittance(bool _isActive) public {
-        owner = msg.sender;
-        isActive = _isActive;
+    function Remittance(bool _isActive) ActiveState(_isActive) public {
     }
 
     function getRemittance(bytes32 hashValue) public view isActiveContract returns (address remitter,uint deadline,uint amount) {
@@ -44,8 +41,8 @@ contract Remittance is Ownable, ActiveState {
         remittanceRecord.amount = msg.value - serviceFee;
 
         remittanceRecords[hashValue] = remittanceRecord;
-        LogRemittanceCreated(hashValue,remittanceRecord.remitter,remittanceRecord.deadline,remittanceRecord.amount,owner,serviceFee);
         unclaimedFeePayment[owner] += serviceFee;
+        LogRemittanceCreated(hashValue,remittanceRecord.remitter,remittanceRecord.deadline,remittanceRecord.amount,owner,serviceFee);
 
         return (true);
     }
@@ -59,22 +56,21 @@ contract Remittance is Ownable, ActiveState {
         uint remittanceAmount = remittanceRecords[_hashKey].amount;
         remittanceRecords[_hashKey].amount = 0;
 
-        msg.sender.transfer(remittanceAmount);
         LogRemittanceClaimed(_hashKey,msg.sender,remittanceRecords[_hashKey].amount);
+        msg.sender.transfer(remittanceAmount);
 
         return (true);
     }
 
     function reclaimFunds(bytes32 hashValue) public isActiveContract returns (bool success) {
-        remittanceStruct memory remittanceRecord = remittanceRecords[hashValue];
-        require(remittanceRecord.remitter == msg.sender);
-        require(remittanceRecord.amount > 0);
-        require(block.number > remittanceRecord.deadline);
+        require(remittanceRecords[hashValue].remitter == msg.sender);
+        require(remittanceRecords[hashValue].amount > 0);
+        require(block.number > remittanceRecords[hashValue].deadline);
 
+        uint fundAmount = remittanceRecords[hashValue].amount;
         remittanceRecords[hashValue].amount = 0;
-
-        msg.sender.transfer(remittanceRecord.amount);
-        LogRemittanceRefunded(hashValue,msg.sender,remittanceRecord.amount);
+        LogRemittanceRefunded(hashValue,msg.sender,fundAmount);
+        msg.sender.transfer(fundAmount);
 
         return (true);
     }
@@ -85,8 +81,8 @@ contract Remittance is Ownable, ActiveState {
         uint _feeToSend = unclaimedFeePayment[msg.sender];
         unclaimedFeePayment[msg.sender] = 0;
 
-        msg.sender.transfer(_feeToSend);
         LogServiceFeeReceived(msg.sender,_feeToSend);
+        msg.sender.transfer(_feeToSend);
 
         return (true);
     }
