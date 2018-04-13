@@ -34,16 +34,23 @@ contract RockPaperScissors is ActiveState {
     mapping (bytes32 => rockPaperScissorsGameStruct) rockPaperScissorsGame;
     mapping (address => uint) winnings;
 
-    function getGameProgression(address opponent) public returns (uint gameProgression, address, bytes32,  address, bytes32) {
+    function getGameProgression(address opponent) public isActiveContract returns (uint gameProgression, address, bytes32,  address, bytes32) {
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent);
         rockPaperScissorsGameStruct gameRecord = rockPaperScissorsGame[hashValue];
         return (uint(gameRecord.gameProgression),msg.sender,rockPaperScissorsGame[hashValue].playerChoice[msg.sender].hiddenToolChoice,opponent,rockPaperScissorsGame[hashValue].playerChoice[opponent].hiddenToolChoice);
     }
+    /*
+        User will pick opponent they want to play against and submit their tool as hidden.
+     */
 
-    function pickHiddenTool(address opponent, bytes32 hiddenTool) public payable returns (bool success) {
-        uint totalToWager = winnings[msg.sender] + msg.value;
+    function pickHiddenTool(address opponent, bytes32 hiddenTool) public isActiveContract payable returns (bool success) {
         require(opponent != address(0));
+
+        //  The total of their previous winnings + ether submitted must be greater than nothing to play.
+        uint totalToWager = winnings[msg.sender] + msg.value;
         require(totalToWager > 0);
+
+        // Tool choice will be saved in hash form.
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent);
         require(rockPaperScissorsGame[hashValue].gameProgression < GameProgression.BothPlayersPickedHiddenTool);
                 
@@ -61,7 +68,12 @@ contract RockPaperScissors is ActiveState {
         }
     }
 
-    function revealHiddenTool(address opponent, string secretCode) public returns (bool success) {
+    /*
+        Using thier secret code, their tool is revealed and saved.   If the player is the second to reveal
+        then the determination will be made as to who won and their account will be credited  with all the ether 
+        and the unique game will reset.
+     */
+    function revealHiddenTool(address opponent, string secretCode) public isActiveContract returns (bool success) {
         require(opponent != address(0));
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent);
         require(rockPaperScissorsGame[hashValue].gameProgression == GameProgression.BothPlayersPickedHiddenTool || rockPaperScissorsGame[hashValue].gameProgression == GameProgression.OnePlayerRevealedTool);
@@ -156,11 +168,11 @@ contract RockPaperScissors is ActiveState {
         return (true);
     }
 
-    function balanceOf(address player) public view returns (uint amount) {
+    function balanceOf(address player) public isActiveContract view returns (uint amount) {
         return (winnings[player]);
     }
 
-    function claimWinnings() public returns (bool success) {
+    function claimWinnings() public isActiveContract returns (bool success) {
         require(winnings[msg.sender] > 0);
 
         uint winningProceeds = winnings[msg.sender];
@@ -168,30 +180,12 @@ contract RockPaperScissors is ActiveState {
         msg.sender.transfer(winningProceeds);
     }
 
-    function getHashForSecretlyPickingTool(uint tool, string secretCode, address validAccount) public view returns (bytes32 hashResult) {
+    /* Used for hashing the tool preference for game  */
+    function getHashForSecretlyPickingTool(uint tool, string secretCode, address validAccount) public view isActiveContract returns (bytes32 hashResult) {
         return (keccak256(tool,secretCode,validAccount));
     }
 
-    function determineToolFromNumber(uint tool) internal view returns (ToolChoice toolChoice) {
-        require(tool > 0 && tool <= 3);
-        if (uint(ToolChoice.rock)==tool)
-        {
-            toolChoice = ToolChoice.rock;
-        }
-        else if (uint(ToolChoice.scissors)==tool)
-        {
-            toolChoice = ToolChoice.scissors;
-        }
-        else if (uint(ToolChoice.paper)==tool)
-        {
-            toolChoice = ToolChoice.paper;
-        }        
-
-        return (toolChoice);
-    }
-
-
-    function getHashForUniqueGame(address primary, address secondary) public pure returns (bytes32 hashResult) {
+    function getHashForUniqueGame(address primary, address secondary) public view isActiveContract returns (bytes32 hashResult) {
         address firstAddress;
         address secondAddress;
 
@@ -208,10 +202,5 @@ contract RockPaperScissors is ActiveState {
 
 
         return (keccak256(firstAddress,secondAddress));
-    }
-
-    function GetHash(string input, address validAccount) public pure returns (bytes32) {
-        return (keccak256(input,validAccount));
-    }
-    
+    }    
 }
