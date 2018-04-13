@@ -57,6 +57,7 @@ contract RockPaperScissors is ActiveState {
         // Tool choice will be saved in hash form.
         rockPaperScissorsGame[hashValue].playerChoice[msg.sender].hiddenToolChoice = hiddenTool;
         rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount = totalToWager;   
+        // Zero out balance since it will be used in current game.
         winnings[msg.sender] = 0;
 
         if (rockPaperScissorsGame[hashValue].playerChoice[opponent].hiddenToolChoice == 0x0)
