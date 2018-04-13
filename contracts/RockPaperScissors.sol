@@ -40,7 +40,7 @@ contract RockPaperScissors is ActiveState {
         return (uint(gameRecord.gameProgression),msg.sender,rockPaperScissorsGame[hashValue].playerChoice[msg.sender].hiddenToolChoice,opponent,rockPaperScissorsGame[hashValue].playerChoice[opponent].hiddenToolChoice);
     }
     /*
-        User will pick opponent they want to play against and submit their tool as hidden.
+        User will pick opponent they want to play against and submit their tool as hidden hash value.
      */
 
     function pickHiddenTool(address opponent, bytes32 hiddenTool) public isActiveContract payable returns (bool success) {
