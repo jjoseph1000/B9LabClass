@@ -50,10 +50,11 @@ contract RockPaperScissors is ActiveState {
         uint totalToWager = winnings[msg.sender] + msg.value;
         require(totalToWager > 0);
 
-        // Tool choice will be saved in hash form.
+        // All games between two accounts will have a unique hash value for identification purposes.
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent);
         require(rockPaperScissorsGame[hashValue].gameProgression < GameProgression.BothPlayersPickedHiddenTool);
-                
+
+        // Tool choice will be saved in hash form.
         rockPaperScissorsGame[hashValue].playerChoice[msg.sender].hiddenToolChoice = hiddenTool;
         rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount = totalToWager;   
         winnings[msg.sender] = 0;
