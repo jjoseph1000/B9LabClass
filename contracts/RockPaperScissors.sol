@@ -7,6 +7,7 @@ contract RockPaperScissors is ActiveState {
     }
 
     enum ToolChoice {
+        notool,
         rock,
         scissors,
         paper
@@ -33,31 +34,24 @@ contract RockPaperScissors is ActiveState {
     mapping (bytes32 => rockPaperScissorsGameStruct) rockPaperScissorsGame;
     mapping (address => uint) winnings;
 
-    function startGame(address opponent) public returns (bool success) {
-        require(opponent != address(0));
+    function getGameProgression(address opponent) public returns (uint gameProgression, address, bytes32,  address, bytes32) {
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent);
-        require(rockPaperScissorsGame[hashValue].gameProgression == GameProgression.BothPlayersPickedHiddenTool);
-        
-        
-        return (true);
-    }
-
-    function getGameProgression(address opponent) public returns (uint gameProgression) {
-        bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent);
-        rockPaperScissorsGameStruct memory gameRecord = rockPaperScissorsGame[hashValue];
-        return (uint(gameRecord.gameProgression));
+        rockPaperScissorsGameStruct gameRecord = rockPaperScissorsGame[hashValue];
+        return (uint(gameRecord.gameProgression),msg.sender,rockPaperScissorsGame[hashValue].playerChoice[msg.sender].hiddenToolChoice,opponent,rockPaperScissorsGame[hashValue].playerChoice[opponent].hiddenToolChoice);
     }
 
     function pickHiddenTool(address opponent, bytes32 hiddenTool) public payable returns (bool success) {
+        uint totalToWager = winnings[msg.sender] + msg.value;
         require(opponent != address(0));
-        require(msg.value > 0);
+        require(totalToWager > 0);
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent);
         require(rockPaperScissorsGame[hashValue].gameProgression < GameProgression.BothPlayersPickedHiddenTool);
                 
         rockPaperScissorsGame[hashValue].playerChoice[msg.sender].hiddenToolChoice = hiddenTool;
-        rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount = msg.value;   
+        rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount = totalToWager;   
+        winnings[msg.sender] = 0;
 
-        if (rockPaperScissorsGame[hashValue].playerChoice[opponent].hiddenToolChoice == "0x0")
+        if (rockPaperScissorsGame[hashValue].playerChoice[opponent].hiddenToolChoice == 0x0)
         {
             rockPaperScissorsGame[hashValue].gameProgression = GameProgression.OnePlayerPickedHiddenTool;
         }
@@ -73,15 +67,15 @@ contract RockPaperScissors is ActiveState {
         require(rockPaperScissorsGame[hashValue].gameProgression == GameProgression.BothPlayersPickedHiddenTool || rockPaperScissorsGame[hashValue].gameProgression == GameProgression.OnePlayerRevealedTool);
 
         bytes32 hiddenToolChoice = rockPaperScissorsGame[hashValue].playerChoice[msg.sender].hiddenToolChoice;
-        if (getHashForSecretlyPickingTool(0,secretCode,msg.sender)==hiddenToolChoice)
+        if (getHashForSecretlyPickingTool(1,secretCode,msg.sender)==hiddenToolChoice)
         {
             rockPaperScissorsGame[hashValue].playerChoice[msg.sender].toolChoice = ToolChoice.rock;
         }
-        else if (getHashForSecretlyPickingTool(1,secretCode,msg.sender)==hiddenToolChoice)
+        else if (getHashForSecretlyPickingTool(2,secretCode,msg.sender)==hiddenToolChoice)
         {
             rockPaperScissorsGame[hashValue].playerChoice[msg.sender].toolChoice = ToolChoice.scissors;
         }
-        else if (getHashForSecretlyPickingTool(2,secretCode,msg.sender)==hiddenToolChoice)
+        else if (getHashForSecretlyPickingTool(3,secretCode,msg.sender)==hiddenToolChoice)
         {
             rockPaperScissorsGame[hashValue].playerChoice[msg.sender].toolChoice = ToolChoice.paper;
         }
@@ -96,10 +90,82 @@ contract RockPaperScissors is ActiveState {
         }
         else
         {
+            ToolChoice toolChoice = rockPaperScissorsGame[hashValue].playerChoice[msg.sender].toolChoice;
+            ToolChoice opponentToolChoice = rockPaperScissorsGame[hashValue].playerChoice[opponent].toolChoice;
 
+            if (toolChoice == ToolChoice.rock)
+            {
+                if (opponentToolChoice == ToolChoice.rock)
+                {
+                    winnings[msg.sender] += rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount;
+                    winnings[opponent] += rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                }
+                else if (opponentToolChoice == ToolChoice.scissors)
+                {
+                    winnings[msg.sender] += rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                }
+                else if (opponentToolChoice == ToolChoice.paper)
+                {
+                    winnings[opponent] += rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                }
+            }
+            else if (toolChoice == ToolChoice.scissors)
+            {
+                if (opponentToolChoice == ToolChoice.rock)
+                {
+                    winnings[opponent] += rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                }
+                else if (opponentToolChoice == ToolChoice.scissors)
+                {
+                    winnings[msg.sender] += rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount;
+                    winnings[opponent] += rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                }
+                else if (opponentToolChoice == ToolChoice.paper)
+                {
+                    winnings[msg.sender] += rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                }
+            }
+            else if (toolChoice == ToolChoice.paper)
+            {
+                if (opponentToolChoice == ToolChoice.rock)
+                {
+                    winnings[msg.sender] += rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                }
+                else if (opponentToolChoice == ToolChoice.scissors)
+                {
+                    winnings[opponent] += rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                }
+                else if (opponentToolChoice == ToolChoice.paper)
+                {
+                    winnings[msg.sender] += rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount;
+                    winnings[opponent] += rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                }
+            }
+
+            rockPaperScissorsGame[hashValue].gameProgression = GameProgression.NoToolsSelected;
+            rockPaperScissorsGame[hashValue].playerChoice[msg.sender].hiddenToolChoice = 0x0;
+            rockPaperScissorsGame[hashValue].playerChoice[msg.sender].toolChoice = ToolChoice.notool;
+            rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount = 0;
+            rockPaperScissorsGame[hashValue].playerChoice[opponent].hiddenToolChoice = 0x0;
+            rockPaperScissorsGame[hashValue].playerChoice[opponent].toolChoice = ToolChoice.notool;
+            rockPaperScissorsGame[hashValue].playerChoice[opponent].amount = 0;
+            
+            
         }
 
         return (true);
+    }
+
+    function balanceOf(address player) public view returns (uint amount) {
+        return (winnings[player]);
+    }
+
+    function claimWinnings() public returns (bool success) {
+        require(winnings[msg.sender] > 0);
+
+        uint winningProceeds = winnings[msg.sender];
+        winnings[msg.sender] = 0;
+        msg.sender.transfer(winningProceeds);
     }
 
     function getHashForSecretlyPickingTool(uint tool, string secretCode, address validAccount) public view returns (bytes32 hashResult) {
@@ -107,7 +173,7 @@ contract RockPaperScissors is ActiveState {
     }
 
     function determineToolFromNumber(uint tool) internal view returns (ToolChoice toolChoice) {
-        require(tool >= 0 && tool < 3);
+        require(tool > 0 && tool <= 3);
         if (uint(ToolChoice.rock)==tool)
         {
             toolChoice = ToolChoice.rock;
