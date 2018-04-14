@@ -29,12 +29,14 @@ contract RockPaperScissors is ActiveState {
     struct rockPaperScissorsGameStruct {
         mapping (address => playerStruct) playerChoice;
         GameProgression gameProgression;
+        uint gameDeadline;
     }
 
     mapping (bytes32 => rockPaperScissorsGameStruct) rockPaperScissorsGame;
     mapping (address => uint) winnings;
+    uint gameDeadlineLength = 40320;
 
-    function getGameProgression(address opponent) public isActiveContract returns (uint gameProgression, address, bytes32,  address, bytes32) {
+    function getGameProgression(address opponent) public isActiveContract view returns (uint gameProgression, address, bytes32,  address, bytes32) {
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent);
         rockPaperScissorsGameStruct storage gameRecord = rockPaperScissorsGame[hashValue];
         return (uint(gameRecord.gameProgression),msg.sender,gameRecord.playerChoice[msg.sender].hiddenToolChoice,opponent,gameRecord.playerChoice[opponent].hiddenToolChoice);
@@ -54,6 +56,7 @@ contract RockPaperScissors is ActiveState {
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent);
         rockPaperScissorsGameStruct storage gameRecord = rockPaperScissorsGame[hashValue];
         require(gameRecord.gameProgression < GameProgression.BothPlayersPickedHiddenTool);
+        require(gameRecord.gameDeadline > block.number || gameRecord.gameProgression == GameProgression.NoToolsSelected);
 
         // Tool choice will be saved in hash form.
         gameRecord.playerChoice[msg.sender].hiddenToolChoice = hiddenTool;
@@ -69,6 +72,9 @@ contract RockPaperScissors is ActiveState {
         {
             gameRecord.gameProgression = GameProgression.BothPlayersPickedHiddenTool;
         }
+        gameRecord.gameDeadline = block.number + gameDeadlineLength;
+
+        return (true);
     }
 
     /*
@@ -81,28 +87,30 @@ contract RockPaperScissors is ActiveState {
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent);
         rockPaperScissorsGameStruct storage gameRecord = rockPaperScissorsGame[hashValue];
         require(gameRecord.gameProgression == GameProgression.BothPlayersPickedHiddenTool || gameRecord.gameProgression == GameProgression.OnePlayerRevealedTool);
+        require(gameRecord.gameDeadline > block.number);
 
         bytes32 hiddenToolChoice = gameRecord.playerChoice[msg.sender].hiddenToolChoice;
-        if (getHashForSecretlyPickingTool(1,secretCode,msg.sender)==hiddenToolChoice)
+        if (getHashForSecretlyPickingTool(1,secretCode)==hiddenToolChoice)
         {
             gameRecord.playerChoice[msg.sender].toolChoice = ToolChoice.rock;
         }
-        else if (getHashForSecretlyPickingTool(2,secretCode,msg.sender)==hiddenToolChoice)
+        else if (getHashForSecretlyPickingTool(2,secretCode)==hiddenToolChoice)
         {
             gameRecord.playerChoice[msg.sender].toolChoice = ToolChoice.scissors;
         }
-        else if (getHashForSecretlyPickingTool(3,secretCode,msg.sender)==hiddenToolChoice)
+        else if (getHashForSecretlyPickingTool(3,secretCode)==hiddenToolChoice)
         {
             gameRecord.playerChoice[msg.sender].toolChoice = ToolChoice.paper;
         }
         else
         {
-            throw;
+            revert();
         }
 
         if (gameRecord.gameProgression == GameProgression.BothPlayersPickedHiddenTool)
         {
             gameRecord.gameProgression = GameProgression.OnePlayerRevealedTool;
+            gameRecord.gameDeadline = block.number + gameDeadlineLength;
         }
         else
         {
@@ -158,18 +166,52 @@ contract RockPaperScissors is ActiveState {
                 }
             }
 
-            rockPaperScissorsGame[hashValue].gameProgression = GameProgression.NoToolsSelected;
-            rockPaperScissorsGame[hashValue].playerChoice[msg.sender].hiddenToolChoice = 0x0;
-            rockPaperScissorsGame[hashValue].playerChoice[msg.sender].toolChoice = ToolChoice.notool;
-            rockPaperScissorsGame[hashValue].playerChoice[msg.sender].amount = 0;
-            rockPaperScissorsGame[hashValue].playerChoice[opponent].hiddenToolChoice = 0x0;
-            rockPaperScissorsGame[hashValue].playerChoice[opponent].toolChoice = ToolChoice.notool;
-            rockPaperScissorsGame[hashValue].playerChoice[opponent].amount = 0;
-            
-            
+            ResetGame(opponent);         
         }
 
         return (true);
+    }
+
+    function ResetGame(address opponent) public returns (bool success) {
+        bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent);
+        rockPaperScissorsGameStruct storage gameRecord = rockPaperScissorsGame[hashValue];
+        
+        gameRecord.gameProgression = GameProgression.NoToolsSelected;
+        gameRecord.gameDeadline = 0;
+        gameRecord.playerChoice[msg.sender].hiddenToolChoice = 0x0;
+        gameRecord.playerChoice[msg.sender].toolChoice = ToolChoice.notool;
+        gameRecord.playerChoice[msg.sender].amount = 0;
+        gameRecord.playerChoice[opponent].hiddenToolChoice = 0x0;
+        gameRecord.playerChoice[opponent].toolChoice = ToolChoice.notool;
+        gameRecord.playerChoice[opponent].amount = 0;
+    }
+
+    function claimFundsFromForfeitedGame(address opponent) public isActiveContract returns (bool success) {
+        require(opponent != address(0));
+        bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent);
+        rockPaperScissorsGameStruct storage gameRecord = rockPaperScissorsGame[hashValue];
+        require(gameRecord.gameDeadline > 0 && gameRecord.gameDeadline < block.number);
+
+        /* Any period before one player reveals their tool will result in both players receiving their funds back.
+           If one player has already revealed their tool then that player will be entitled to all 
+           funds from the game  */
+        if (gameRecord.gameProgression == GameProgression.OnePlayerRevealedTool)
+        {
+            if (gameRecord.playerChoice[opponent].toolChoice == ToolChoice.notool)
+            {
+                winnings[msg.sender] += gameRecord.playerChoice[msg.sender].amount + gameRecord.playerChoice[opponent].amount;
+            }
+            else
+            {
+                winnings[opponent] += gameRecord.playerChoice[msg.sender].amount + gameRecord.playerChoice[opponent].amount;
+            }
+        }
+        else
+        {
+            winnings[msg.sender] += gameRecord.playerChoice[msg.sender].amount;
+            winnings[opponent] += gameRecord.playerChoice[opponent].amount;
+        }
+        ResetGame(opponent);
     }
 
     function balanceOf(address player) public isActiveContract view returns (uint amount) {
@@ -182,11 +224,13 @@ contract RockPaperScissors is ActiveState {
         uint winningProceeds = winnings[msg.sender];
         winnings[msg.sender] = 0;
         msg.sender.transfer(winningProceeds);
+
+        return (true);
     }
 
     /* Used for hashing the tool preference for game  */
-    function getHashForSecretlyPickingTool(uint tool, string secretCode, address validAccount) public view isActiveContract returns (bytes32 hashResult) {
-        return (keccak256(tool,secretCode,validAccount));
+    function getHashForSecretlyPickingTool(uint tool, string secretCode) public view isActiveContract returns (bytes32 hashResult) {
+        return (keccak256(tool,secretCode));
     }
 
     function getHashForUniqueGame(address primary, address secondary) public view isActiveContract returns (bytes32 hashResult) {
