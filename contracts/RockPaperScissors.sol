@@ -6,6 +6,14 @@ contract RockPaperScissors is ActiveState {
     function RockPaperScissors(bool _isActive) ActiveState(_isActive) public {
     }
 
+    event LogPickHiddenTool(bytes32 hashedGameId, address player, bytes32 hiddenToolChoice, uint amount, uint gameProgression, uint gameDeadline);
+    event LogRevealHiddenTool(bytes32 hashedGameId, address player, uint toolChoice);
+    event LogGameProgression(bytes32 hashedGameId, uint gameProgression, uint gameDeadline);
+    event LogAllocatedFundsToWinner(address player, uint playerAmount, address opponent, uint opponentAmount);
+    event LogResetGame(bytes32 hashedGameId);
+    event LogFundDistributionFromForfeitedGame(address player, uint playerAmount, address opponent, uint opponentAmount);
+    event LogClaimWinnings(address player, uint amount);
+
     enum ToolChoice {
         notool,
         rock,
@@ -74,6 +82,8 @@ contract RockPaperScissors is ActiveState {
         }
         gameRecord.gameDeadline = block.number + gameDeadlineLength;
 
+        LogPickHiddenTool(hashValue, msg.sender, hiddenTool, totalToWager, uint(gameRecord.gameProgression),gameRecord.gameDeadline);
+
         return (true);
     }
 
@@ -107,64 +117,73 @@ contract RockPaperScissors is ActiveState {
             revert();
         }
 
+        LogRevealHiddenTool(hashValue, msg.sender, uint(gameRecord.playerChoice[msg.sender].toolChoice));
+
         if (gameRecord.gameProgression == GameProgression.BothPlayersPickedHiddenTool)
         {
             gameRecord.gameProgression = GameProgression.OnePlayerRevealedTool;
             gameRecord.gameDeadline = block.number + gameDeadlineLength;
+            LogGameProgression(hashValue, uint(gameRecord.gameProgression), gameRecord.gameDeadline);
         }
         else
         {
             ToolChoice toolChoice = gameRecord.playerChoice[msg.sender].toolChoice;
             ToolChoice opponentToolChoice = gameRecord.playerChoice[opponent].toolChoice;
+            uint playerWinnings;
+            uint opponentWinnings;
 
             if (toolChoice == ToolChoice.rock)
             {
                 if (opponentToolChoice == ToolChoice.rock)
                 {
-                    winnings[msg.sender] += gameRecord.playerChoice[msg.sender].amount;
-                    winnings[opponent] += gameRecord.playerChoice[opponent].amount;
+                    playerWinnings = gameRecord.playerChoice[msg.sender].amount;
+                    opponentWinnings = gameRecord.playerChoice[opponent].amount;
                 }
                 else if (opponentToolChoice == ToolChoice.scissors)
                 {
-                    winnings[msg.sender] += gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                    playerWinnings = gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
                 }
                 else if (opponentToolChoice == ToolChoice.paper)
                 {
-                    winnings[opponent] += gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                    opponentWinnings = gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
                 }
             }
             else if (toolChoice == ToolChoice.scissors)
             {
                 if (opponentToolChoice == ToolChoice.rock)
                 {
-                    winnings[opponent] += gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                    opponentWinnings = gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
                 }
                 else if (opponentToolChoice == ToolChoice.scissors)
                 {
-                    winnings[msg.sender] += gameRecord.playerChoice[msg.sender].amount;
-                    winnings[opponent] += gameRecord.playerChoice[opponent].amount;
+                    playerWinnings = gameRecord.playerChoice[msg.sender].amount;
+                    opponentWinnings = gameRecord.playerChoice[opponent].amount;
                 }
                 else if (opponentToolChoice == ToolChoice.paper)
                 {
-                    winnings[msg.sender] += gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                    playerWinnings = gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
                 }
             }
             else if (toolChoice == ToolChoice.paper)
             {
                 if (opponentToolChoice == ToolChoice.rock)
                 {
-                    winnings[msg.sender] += gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                    playerWinnings = gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
                 }
                 else if (opponentToolChoice == ToolChoice.scissors)
                 {
-                    winnings[opponent] += gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                    opponentWinnings = gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
                 }
                 else if (opponentToolChoice == ToolChoice.paper)
                 {
-                    winnings[msg.sender] += gameRecord.playerChoice[msg.sender].amount;
-                    winnings[opponent] += gameRecord.playerChoice[opponent].amount;
+                    playerWinnings = gameRecord.playerChoice[msg.sender].amount;
+                    opponentWinnings = gameRecord.playerChoice[opponent].amount;
                 }
             }
+
+            winnings[msg.sender] += playerWinnings;
+            winnings[opponent] += opponentWinnings;
+            LogAllocatedFundsToWinner(msg.sender, playerWinnings, opponent, opponentWinnings);
 
             ResetGame(opponent);         
         }
@@ -184,6 +203,9 @@ contract RockPaperScissors is ActiveState {
         gameRecord.playerChoice[opponent].hiddenToolChoice = 0x0;
         gameRecord.playerChoice[opponent].toolChoice = ToolChoice.notool;
         gameRecord.playerChoice[opponent].amount = 0;
+        LogResetGame(hashValue);
+
+        return (true);
     }
 
     function claimFundsFromForfeitedGame(address opponent) public isActiveContract returns (bool success) {
@@ -195,22 +217,30 @@ contract RockPaperScissors is ActiveState {
         /* Any period before one player reveals their tool will result in both players receiving their funds back.
            If one player has already revealed their tool then that player will be entitled to all 
            funds from the game  */
+        uint playerAmount;
+        uint opponentAmount;
         if (gameRecord.gameProgression == GameProgression.OnePlayerRevealedTool)
         {
             if (gameRecord.playerChoice[opponent].toolChoice == ToolChoice.notool)
             {
-                winnings[msg.sender] += gameRecord.playerChoice[msg.sender].amount + gameRecord.playerChoice[opponent].amount;
+                playerAmount = gameRecord.playerChoice[msg.sender].amount + gameRecord.playerChoice[opponent].amount;
             }
             else
             {
-                winnings[opponent] += gameRecord.playerChoice[msg.sender].amount + gameRecord.playerChoice[opponent].amount;
+                opponentAmount = gameRecord.playerChoice[msg.sender].amount + gameRecord.playerChoice[opponent].amount;
             }
         }
         else
         {
-            winnings[msg.sender] += gameRecord.playerChoice[msg.sender].amount;
-            winnings[opponent] += gameRecord.playerChoice[opponent].amount;
+            playerAmount = gameRecord.playerChoice[msg.sender].amount;
+            opponentAmount = gameRecord.playerChoice[opponent].amount;
         }
+
+        winnings[msg.sender] += playerAmount;
+        winnings[opponent] += opponentAmount;
+
+        LogFundDistributionFromForfeitedGame(msg.sender, playerAmount, opponent, opponentAmount);
+
         ResetGame(opponent);
     }
 
@@ -223,6 +253,7 @@ contract RockPaperScissors is ActiveState {
 
         uint winningProceeds = winnings[msg.sender];
         winnings[msg.sender] = 0;
+        LogClaimWinnings(msg.sender, winningProceeds);
         msg.sender.transfer(winningProceeds);
 
         return (true);
