@@ -8,6 +8,7 @@ var Remittance = artifacts.require("./Remittance.sol");
 var ControlledAccessDonation = artifacts.require("./ControlledAccessDonation.sol");
 var RemittanceTest = artifacts.require("./RemittanceTest.sol");
 var RockPaperScissors = artifacts.require("./RockPaperScissors.sol");
+var PredictFutureHash = artifacts.require("./PredictFutureHash.sol");
 
 module.exports = function(deployer) {
   // deployer.deploy(ConvertLib);
@@ -21,4 +22,5 @@ module.exports = function(deployer) {
   deployer.deploy(RemittanceTest);
   deployer.deploy(ControlledAccessDonation);
   deployer.deploy(RockPaperScissors,true);
+  deployer.deploy(PredictFutureHash);
 };
