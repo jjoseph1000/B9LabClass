@@ -7,11 +7,14 @@ pragma solidity ^0.4.6;
  * functions, this simplifies the implementation of "user permissions".
  */
 contract Ownable {
-  address public owner;
+  address private owner;
 
 
-  event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+  event LogOwner(address indexed previousOwner, address indexed newOwner);
 
+  function getOwner() returns (address _owner) {
+    return (owner);
+  }
 
   /**
    * @dev The Ownable constructor sets the original `owner` of the contract to the sender
@@ -35,7 +38,8 @@ contract Ownable {
    */
   function transferOwnership(address newOwner) public onlyOwner {
     require(newOwner != address(0));
-    OwnershipTransferred(owner, newOwner);
+    require(newOwner != owner);
+    LogOwner(owner, newOwner);
     owner = newOwner;
   }
 

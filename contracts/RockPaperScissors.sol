@@ -3,7 +3,7 @@ pragma solidity ^0.4.6;
 import "./ActiveState.sol";
 
 contract RockPaperScissors is ActiveState {
-    mapping (uint => mapping(uint => uint)) gameResultPossibilities;
+    mapping (uint => mapping(uint => uint)) winnerDetermination;
     enum ToolChoice {
         notool,
         rock,
@@ -12,17 +12,17 @@ contract RockPaperScissors is ActiveState {
     }
 
     function RockPaperScissors(bool _isActive) ActiveState(_isActive) public {
-        /*  Define who wins user or opponent
+        /*  Determine who wins user or opponent
             0=tie, 1=user, 2=opponent  */
-        gameResultPossibilities[uint(ToolChoice.rock)][uint(ToolChoice.rock)] = 0;
-        gameResultPossibilities[uint(ToolChoice.rock)][uint(ToolChoice.scissors)] = 1;
-        gameResultPossibilities[uint(ToolChoice.rock)][uint(ToolChoice.paper)] = 2;
-        gameResultPossibilities[uint(ToolChoice.scissors)][uint(ToolChoice.rock)] = 2;
-        gameResultPossibilities[uint(ToolChoice.scissors)][uint(ToolChoice.scissors)] = 0;
-        gameResultPossibilities[uint(ToolChoice.scissors)][uint(ToolChoice.paper)] = 1;
-        gameResultPossibilities[uint(ToolChoice.paper)][uint(ToolChoice.rock)] = 1;
-        gameResultPossibilities[uint(ToolChoice.paper)][uint(ToolChoice.scissors)] = 2;
-        gameResultPossibilities[uint(ToolChoice.paper)][uint(ToolChoice.paper)] = 0;
+        winnerDetermination[uint(ToolChoice.rock)][uint(ToolChoice.rock)] = 0;
+        winnerDetermination[uint(ToolChoice.rock)][uint(ToolChoice.scissors)] = 1;
+        winnerDetermination[uint(ToolChoice.rock)][uint(ToolChoice.paper)] = 2;
+        winnerDetermination[uint(ToolChoice.scissors)][uint(ToolChoice.rock)] = 2;
+        winnerDetermination[uint(ToolChoice.scissors)][uint(ToolChoice.scissors)] = 0;
+        winnerDetermination[uint(ToolChoice.scissors)][uint(ToolChoice.paper)] = 1;
+        winnerDetermination[uint(ToolChoice.paper)][uint(ToolChoice.rock)] = 1;
+        winnerDetermination[uint(ToolChoice.paper)][uint(ToolChoice.scissors)] = 2;
+        winnerDetermination[uint(ToolChoice.paper)][uint(ToolChoice.paper)] = 0;
     }
 
     event LogPickHiddenTool(bytes32 hashedGameId, address player, bytes32 hiddenToolChoice, uint amount, uint gameProgression, uint gameDeadline);
@@ -109,11 +109,6 @@ contract RockPaperScissors is ActiveState {
         return (true);
     }
 
-    function determineWinner(uint toolChoice, uint opponentToolChoice) internal view returns (uint result) {
-        result = gameResultPossibilities[toolChoice][opponentToolChoice];      
-
-    }
-
     /*
         Using thier secret code, their tool is revealed and saved.   If the player is the second to reveal
         then the determination will be made as to who won and their account will be credited  with all the ether 
@@ -148,13 +143,13 @@ contract RockPaperScissors is ActiveState {
         {
             uint toolChoice = gameRecord.playerChoice[msg.sender].toolChoice;
             uint opponentToolChoice = gameRecord.playerChoice[opponent].toolChoice;
-            uint playerWinnings;
-            uint opponentWinnings;
+            uint playerWinnings=0;
+            uint opponentWinnings=0;
 
-            uint gameResult = determineWinner(toolChoice, opponentToolChoice);
+            uint gameResult = winnerDetermination[toolChoice][opponentToolChoice];
             if (gameResult==1)
             {
-                    playerWinnings = gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                    playerWinnings = gameRecord.playerChoice[msg.sender].amount + gameRecord.playerChoice[opponent].amount;
             }
             else if (gameResult==0)
             {
@@ -163,7 +158,7 @@ contract RockPaperScissors is ActiveState {
             }
             else if (gameResult==2)
             {
-                    opponentWinnings = gameRecord.playerChoice[msg.sender].amount + rockPaperScissorsGame[hashValue].playerChoice[opponent].amount;
+                    opponentWinnings = gameRecord.playerChoice[msg.sender].amount + gameRecord.playerChoice[opponent].amount;
             }
 
             winnings[msg.sender] += playerWinnings;
@@ -202,8 +197,8 @@ contract RockPaperScissors is ActiveState {
         /* Any period before one player reveals their tool will result in both players receiving their funds back.
            If one player has already revealed their tool then that player will be entitled to all 
            funds from the game  */
-        uint playerAmount;
-        uint opponentAmount;
+        uint playerAmount=0;
+        uint opponentAmount=0;
         if (gameRecord.gameProgression == GameProgression.OnePlayerRevealedTool)
         {
             if (gameRecord.playerChoice[opponent].toolChoice == uint(ToolChoice.notool))
