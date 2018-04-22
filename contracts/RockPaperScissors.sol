@@ -67,12 +67,13 @@ contract RockPaperScissors is ActiveState {
         User will pick opponent they want to play against and submit their tool as hidden hash value.
      */
 
-    function pickHiddenTool(address opponent, bytes32 hiddenTool, string gameKeyword) public isActiveContract payable returns (bool success) {
+    function pickHiddenTool(address opponent, bytes32 hiddenTool, string gameKeyword, uint amountToWagerFromPreviousWinnings) public isActiveContract payable returns (bool success) {
         require(opponent != address(0));
-
-        //  The total of their previous winnings + ether submitted must be greater than nothing to play.
-        uint totalToWager = winnings[msg.sender] + msg.value;
+        //  They may elect to wager ether from their previous winnings to this game.
+        require(amountToWagerFromPreviousWinnings <= winnings[msg.sender]);
+        uint totalToWager = amountToWagerFromPreviousWinnings + msg.value;
         require(totalToWager > 0);
+        winnings[msg.sender] -= amountToWagerFromPreviousWinnings;
 
         // Previous secret code and tool combo cannnot be used again.
         require(usedSecretCodes[msg.sender][hiddenTool] == false);
@@ -80,14 +81,12 @@ contract RockPaperScissors is ActiveState {
         // All games between two accounts will have a unique hash value for identification purposes.
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent,gameKeyword);
         Game storage gameRecord = rockPaperScissorsGame[hashValue];
-        require(gameRecord.gameProgression < GameProgression.BothPlayersPickedHiddenTool);
+        require(gameRecord.gameProgression == GameProgression.NoToolsSelected || gameRecord.gameProgression == GameProgression.OnePlayerPickedHiddenTool);
         require(gameRecord.gameDeadline > block.number || gameRecord.gameProgression == GameProgression.NoToolsSelected);
 
         // Tool choice will be saved in hash form.
         gameRecord.playerChoice[msg.sender].hiddenToolChoice = hiddenTool;
         gameRecord.playerChoice[msg.sender].amount = totalToWager;   
-        // Zero out balance since it will be used in current game.
-        winnings[msg.sender] = 0;
 
         if (gameRecord.playerChoice[opponent].hiddenToolChoice == 0x0)
         {
