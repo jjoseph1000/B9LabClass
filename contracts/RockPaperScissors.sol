@@ -3,7 +3,13 @@ pragma solidity ^0.4.6;
 import "./ActiveState.sol";
 
 contract RockPaperScissors is ActiveState {
-    mapping (uint => mapping(uint => uint)) winnerDetermination;
+    enum GameWinner {
+        tie,
+        user,
+        opponent
+    }
+    
+    mapping (uint => mapping(uint => GameWinner)) winnerDetermination;
     enum ToolChoice {
         notool,
         rock,
@@ -11,18 +17,19 @@ contract RockPaperScissors is ActiveState {
         scissors
     }
 
+
     function RockPaperScissors(bool _isActive) ActiveState(_isActive) public {
         /*  Determine who wins user or opponent
             0=tie, 1=user, 2=opponent  */
-        winnerDetermination[uint(ToolChoice.rock)][uint(ToolChoice.rock)] = 0;
-        winnerDetermination[uint(ToolChoice.rock)][uint(ToolChoice.scissors)] = 1;
-        winnerDetermination[uint(ToolChoice.rock)][uint(ToolChoice.paper)] = 2;
-        winnerDetermination[uint(ToolChoice.scissors)][uint(ToolChoice.rock)] = 2;
-        winnerDetermination[uint(ToolChoice.scissors)][uint(ToolChoice.scissors)] = 0;
-        winnerDetermination[uint(ToolChoice.scissors)][uint(ToolChoice.paper)] = 1;
-        winnerDetermination[uint(ToolChoice.paper)][uint(ToolChoice.rock)] = 1;
-        winnerDetermination[uint(ToolChoice.paper)][uint(ToolChoice.scissors)] = 2;
-        winnerDetermination[uint(ToolChoice.paper)][uint(ToolChoice.paper)] = 0;
+        winnerDetermination[uint(ToolChoice.rock)][uint(ToolChoice.rock)] = GameWinner.tie;
+        winnerDetermination[uint(ToolChoice.rock)][uint(ToolChoice.scissors)] = GameWinner.user;
+        winnerDetermination[uint(ToolChoice.rock)][uint(ToolChoice.paper)] = GameWinner.opponent;
+        winnerDetermination[uint(ToolChoice.scissors)][uint(ToolChoice.rock)] = GameWinner.opponent;
+        winnerDetermination[uint(ToolChoice.scissors)][uint(ToolChoice.scissors)] = GameWinner.tie;
+        winnerDetermination[uint(ToolChoice.scissors)][uint(ToolChoice.paper)] = GameWinner.user;
+        winnerDetermination[uint(ToolChoice.paper)][uint(ToolChoice.rock)] = GameWinner.user;
+        winnerDetermination[uint(ToolChoice.paper)][uint(ToolChoice.scissors)] = GameWinner.opponent;
+        winnerDetermination[uint(ToolChoice.paper)][uint(ToolChoice.paper)] = GameWinner.tie;
     }
 
     event LogPickHiddenTool(bytes32 hashedGameId, address player, bytes32 hiddenToolChoice, uint amount, uint gameProgression, uint gameDeadline);
@@ -55,7 +62,7 @@ contract RockPaperScissors is ActiveState {
     mapping (bytes32 => Game) rockPaperScissorsGame;
     mapping (address => uint) winnings;
     mapping (address => mapping(bytes32 => bool)) usedSecretCodes;
-    uint gameDeadlineLength = 40320;
+    uint gameDeadlineLength = 2160;
 
     function getGameProgression(address user, address opponent, string gameKeyword) public isActiveContract view 
         returns (bytes32 hashValue, uint gameProgression) {
@@ -146,17 +153,17 @@ contract RockPaperScissors is ActiveState {
             uint playerWinnings=0;
             uint opponentWinnings=0;
 
-            uint gameResult = winnerDetermination[toolChoice][opponentToolChoice];
-            if (gameResult==1)
+            GameWinner gameResult = winnerDetermination[toolChoice][opponentToolChoice];
+            if (gameResult==GameWinner.user)
             {
                     playerWinnings = gameRecord.playerChoice[msg.sender].amount + gameRecord.playerChoice[opponent].amount;
             }
-            else if (gameResult==0)
+            else if (gameResult==GameWinner.tie)
             {
                     playerWinnings = gameRecord.playerChoice[msg.sender].amount;
                     opponentWinnings = gameRecord.playerChoice[opponent].amount;
             }
-            else if (gameResult==2)
+            else if (gameResult==GameWinner.opponent)
             {
                     opponentWinnings = gameRecord.playerChoice[msg.sender].amount + gameRecord.playerChoice[opponent].amount;
             }
@@ -231,9 +238,10 @@ contract RockPaperScissors is ActiveState {
     }
 
     function claimWinnings() public isActiveContract returns (bool success) {
-        require(winnings[msg.sender] > 0);
-
         uint winningProceeds = winnings[msg.sender];
+        
+        require(winningProceeds > 0);
+
         winnings[msg.sender] = 0;
         LogClaimWinnings(msg.sender, winningProceeds);
         msg.sender.transfer(winningProceeds);
