@@ -4,6 +4,7 @@ import "./ActiveState.sol";
 
 contract RockPaperScissors is ActiveState {
     enum GameWinner {
+        nowinner,
         tie,
         user,
         opponent
@@ -61,20 +62,19 @@ contract RockPaperScissors is ActiveState {
 
     mapping (bytes32 => Game) rockPaperScissorsGame;
     mapping (address => uint) winnings;
-    mapping (address => mapping(bytes32 => bool)) usedSecretCodes;
+    mapping(bytes32 => bool) usedSecretCodes;
     uint gameDeadlineLength = 2160;
 
-    function getGameProgression(address user, address opponent, string gameKeyword) public isActiveContract view 
-        returns (bytes32 hashValue, uint gameProgression) {
-        hashValue = getHashForUniqueGame(user,opponent,gameKeyword);
+    function getGameProgression(bytes32 hashValue) public view 
+        returns (uint gameProgression) {        
         Game storage gameRecord = rockPaperScissorsGame[hashValue];
-        return (hashValue, uint(gameRecord.gameProgression));
+        return (uint(gameRecord.gameProgression));
     }
     /*
         User will pick opponent they want to play against and submit their tool as hidden hash value.
      */
 
-    function pickHiddenTool(address opponent, bytes32 hiddenTool, string gameKeyword, uint amountToWagerFromPreviousWinnings) public isActiveContract payable returns (bool success) {
+    function pickHiddenTool(address opponent, bytes32 hiddenTool, bytes32 gameKeyword, uint amountToWagerFromPreviousWinnings) public isActiveContract payable returns (bool success) {
         require(opponent != address(0));
         //  They may elect to wager ether from their previous winnings to this game.
         require(amountToWagerFromPreviousWinnings <= winnings[msg.sender]);
@@ -83,7 +83,7 @@ contract RockPaperScissors is ActiveState {
         winnings[msg.sender] -= amountToWagerFromPreviousWinnings;
 
         // Previous secret code and tool combo cannnot be used again.
-        require(usedSecretCodes[msg.sender][hiddenTool] == false);
+        require(usedSecretCodes[hiddenTool] == false);
 
         // All games between two accounts will have a unique hash value for identification purposes.
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent,gameKeyword);
@@ -109,7 +109,7 @@ contract RockPaperScissors is ActiveState {
             gameRecord.gameDeadline = block.number + gameDeadlineLength;
         }
 
-        usedSecretCodes[msg.sender][hiddenTool] = true;
+        usedSecretCodes[hiddenTool] = true;
 
         LogPickHiddenTool(hashValue, msg.sender, hiddenTool, totalToWager, uint(gameRecord.gameProgression),gameRecord.gameDeadline);
 
@@ -121,7 +121,7 @@ contract RockPaperScissors is ActiveState {
         then the determination will be made as to who won and their account will be credited  with all the ether 
         and the unique game will reset.
      */
-    function revealHiddenTool(address opponent, string secretCode, uint revealedTool, string gameKeyword) public isActiveContract returns (bool success) {
+    function revealHiddenTool(address opponent, string secretCode, uint revealedTool, bytes32 gameKeyword) public isActiveContract returns (bool success) {
         require(opponent != address(0));
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent,gameKeyword);
         Game storage gameRecord = rockPaperScissorsGame[hashValue];
@@ -167,6 +167,10 @@ contract RockPaperScissors is ActiveState {
             {
                     opponentWinnings = gameRecord.playerChoice[msg.sender].amount + gameRecord.playerChoice[opponent].amount;
             }
+            else
+            {
+                revert();
+            }
 
             winnings[msg.sender] += playerWinnings;
             winnings[opponent] += opponentWinnings;
@@ -178,24 +182,20 @@ contract RockPaperScissors is ActiveState {
         return (true);
     }
 
-    function resetGame(address opponent, string gameKeyword) public returns (bool success) {
+    function resetGame(address opponent, bytes32 gameKeyword) private returns (bool success) {
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent,gameKeyword);
         Game storage gameRecord = rockPaperScissorsGame[hashValue];
         
         gameRecord.gameProgression = GameProgression.NoToolsSelected;
         gameRecord.gameDeadline = 0;
-        gameRecord.playerChoice[msg.sender].hiddenToolChoice = 0x0;
-        gameRecord.playerChoice[msg.sender].toolChoice = uint(ToolChoice.notool);
-        gameRecord.playerChoice[msg.sender].amount = 0;
-        gameRecord.playerChoice[opponent].hiddenToolChoice = 0x0;
-        gameRecord.playerChoice[opponent].toolChoice = uint(ToolChoice.notool);
-        gameRecord.playerChoice[opponent].amount = 0;
+        delete gameRecord.playerChoice[msg.sender];
+        delete gameRecord.playerChoice[opponent];
         LogResetGame(hashValue);
 
         return (true);
     }
 
-    function claimFundsFromForfeitedGame(address opponent, string gameKeyword) public isActiveContract returns (bool success) {
+    function claimFundsFromForfeitedGame(address opponent, bytes32 gameKeyword) public isActiveContract returns (bool success) {
         require(opponent != address(0));
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent,gameKeyword);
         Game storage gameRecord = rockPaperScissorsGame[hashValue];
@@ -233,7 +233,7 @@ contract RockPaperScissors is ActiveState {
         return (true);
     }
 
-    function balanceOf(address player) public isActiveContract view returns (uint amount) {
+    function balanceOf(address player) public view returns (uint amount) {
         return (winnings[player]);
     }
 
@@ -250,28 +250,14 @@ contract RockPaperScissors is ActiveState {
     }
 
     /* Used for hashing the tool preference for game  */
-    function getHashForSecretlyPickingTool(uint tool, string secretCode) public isActiveContract returns (bytes32 hashResult) {
+    function getHashForSecretlyPickingTool(uint tool, string secretCode) public view returns (bytes32 hashResult) {
         require(tool>=1&&tool<=3);
 
         return (keccak256(tool,secretCode));
     }
 
-    function getHashForUniqueGame(address primary, address secondary, string gameKeyword) public view isActiveContract returns (bytes32 hashResult) {
-        address firstAddress;
-        address secondAddress;
+    function getHashForUniqueGame(address primary, address secondary, bytes32 gameKeyword) public view returns (bytes32 hashResult) {
 
-        if (primary < secondary)
-        {
-            firstAddress = primary;
-            secondAddress = secondary;
-        }
-        else
-        {
-            firstAddress = secondary;
-            secondAddress = primary;
-        }
-
-
-        return (keccak256(firstAddress,secondAddress,gameKeyword));
+        return (keccak256( keccak256(primary, secondary) ^ keccak256(secondary, primary) , gameKeyword ));
     }    
 }
