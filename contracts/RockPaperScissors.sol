@@ -33,7 +33,8 @@ contract RockPaperScissors is ActiveState {
         winnerDetermination[uint(ToolChoice.paper)][uint(ToolChoice.paper)] = GameWinner.tie;
     }
 
-    event LogPickHiddenTool(bytes32 hashedGameId, address player, bytes32 hiddenToolChoice, uint amount, uint gameProgression, uint gameDeadline);
+    event LogInitiateGame(bytes32 hashedGameId, address player, uint gameDeadline);
+    event LogPickHiddenTool(bytes32 hashedGameId, address player, bytes32 hiddenToolChoice, uint amount, uint gameProgression);
     event LogRevealHiddenTool(bytes32 hashedGameId, address player, uint toolChoice);
     event LogGameProgression(bytes32 hashedGameId, uint gameProgression, uint gameDeadline);
     event LogAllocatedFundsToWinner(address player, uint playerAmount, address opponent, uint opponentAmount);
@@ -42,6 +43,7 @@ contract RockPaperScissors is ActiveState {
     event LogClaimWinnings(address player, uint amount);
 
     enum GameProgression {
+        NoGameInProgress,
         NoToolsSelected,
         OnePlayerPickedHiddenTool,
         BothPlayersPickedHiddenTool,
@@ -70,6 +72,23 @@ contract RockPaperScissors is ActiveState {
         Game storage gameRecord = rockPaperScissorsGame[hashValue];
         return (uint(gameRecord.gameProgression));
     }
+
+    function initiateGame(address opponent, bytes32 gameKeyword) public returns (bool success) {
+        require(opponent != address(0));
+
+        // All games between two accounts will have a unique hash value for identification purposes.
+        bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent,gameKeyword);
+        Game storage gameRecord = rockPaperScissorsGame[hashValue];
+        require(gameRecord.gameProgression == GameProgression.NoGameInProgress);   
+
+        gameRecord.gameProgression = GameProgression.NoToolsSelected;
+        gameRecord.gameDeadline = block.number + gameDeadlineLength;
+
+        LogInitiateGame(hashValue,msg.sender,gameRecord.gameDeadline);
+
+        return (true);
+    }
+
     /*
         User will pick opponent they want to play against and submit their tool as hidden hash value.
      */
@@ -89,7 +108,7 @@ contract RockPaperScissors is ActiveState {
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent,gameKeyword);
         Game storage gameRecord = rockPaperScissorsGame[hashValue];
         require(gameRecord.gameProgression == GameProgression.NoToolsSelected || gameRecord.gameProgression == GameProgression.OnePlayerPickedHiddenTool);
-        require(gameRecord.gameDeadline > block.number || gameRecord.gameProgression == GameProgression.NoToolsSelected);
+        require(gameRecord.gameDeadline > block.number);
 
         // Tool choice will be saved in hash form.
         gameRecord.playerChoice[msg.sender].hiddenToolChoice = hiddenTool;
@@ -104,14 +123,9 @@ contract RockPaperScissors is ActiveState {
             gameRecord.gameProgression = GameProgression.BothPlayersPickedHiddenTool;
         }
 
-        if (gameRecord.gameDeadline == 0)
-        {
-            gameRecord.gameDeadline = block.number + gameDeadlineLength;
-        }
-
         usedSecretCodes[hiddenTool] = true;
 
-        LogPickHiddenTool(hashValue, msg.sender, hiddenTool, totalToWager, uint(gameRecord.gameProgression),gameRecord.gameDeadline);
+        LogPickHiddenTool(hashValue, msg.sender, hiddenTool, totalToWager, uint(gameRecord.gameProgression));
 
         return (true);
     }
@@ -186,7 +200,7 @@ contract RockPaperScissors is ActiveState {
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent,gameKeyword);
         Game storage gameRecord = rockPaperScissorsGame[hashValue];
         
-        gameRecord.gameProgression = GameProgression.NoToolsSelected;
+        gameRecord.gameProgression = GameProgression.NoGameInProgress;
         gameRecord.gameDeadline = 0;
         delete gameRecord.playerChoice[msg.sender];
         delete gameRecord.playerChoice[opponent];
@@ -250,13 +264,13 @@ contract RockPaperScissors is ActiveState {
     }
 
     /* Used for hashing the tool preference for game  */
-    function getHashForSecretlyPickingTool(uint tool, string secretCode) public view returns (bytes32 hashResult) {
+    function getHashForSecretlyPickingTool(uint tool, string secretCode) public pure returns (bytes32 hashResult) {
         require(tool>=1&&tool<=3);
 
         return (keccak256(tool,secretCode));
     }
 
-    function getHashForUniqueGame(address primary, address secondary, bytes32 gameKeyword) public view returns (bytes32 hashResult) {
+    function getHashForUniqueGame(address primary, address secondary, bytes32 gameKeyword) public pure returns (bytes32 hashResult) {
 
         return (keccak256( keccak256(primary, secondary) ^ keccak256(secondary, primary) , gameKeyword ));
     }    
