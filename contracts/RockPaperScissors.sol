@@ -264,14 +264,14 @@ contract RockPaperScissors is ActiveState {
     }
 
     /* Used for hashing the tool preference for game  */
-    function getHashForSecretlyPickingTool(uint tool, string secretCode) public pure returns (bytes32 hashResult) {
+    function getHashForSecretlyPickingTool(uint tool, string secretCode) public view returns (bytes32 hashResult) {
         require(tool>=1&&tool<=3);
 
-        return (keccak256(tool,secretCode));
+        return (keccak256(tool,secretCode,address(this)));
     }
 
-    function getHashForUniqueGame(address primary, address secondary, bytes32 gameKeyword) public pure returns (bytes32 hashResult) {
+    function getHashForUniqueGame(address primary, address secondary, bytes32 gameKeyword) public view returns (bytes32 hashResult) {
 
-        return (keccak256( keccak256(primary, secondary) ^ keccak256(secondary, primary) , gameKeyword ));
+        return (keccak256( keccak256(primary, secondary) ^ keccak256(secondary, primary) , gameKeyword, address(this) ));
     }    
 }
