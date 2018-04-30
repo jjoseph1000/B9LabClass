@@ -96,7 +96,7 @@ contract RockPaperScissors is ActiveState {
     function pickHiddenTool(address opponent, bytes32 hiddenTool, bytes32 gameKeyword, uint amountToWagerFromPreviousWinnings) public isActiveContract payable returns (bool success) {
         require(opponent != address(0));
         //  They may elect to wager ether from their previous winnings to this game.
-        require(amountToWagerFromPreviousWinnings <= winnings[msg.sender]);
+        require(amountToWagerFromPreviousWinnings <= winnings[msg.sender] && amountToWagerFromPreviousWinnings >=0);
         uint totalToWager = amountToWagerFromPreviousWinnings + msg.value;
         require(totalToWager > 0);
         winnings[msg.sender] -= amountToWagerFromPreviousWinnings;
