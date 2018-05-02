@@ -58,7 +58,7 @@ contract RockPaperScissors is ActiveState {
         mapping (address => Player) playerChoice;
         GameProgression gameProgression;
         uint gameDeadline;
-        uint minimumEachPlayerMustWager;
+        uint amountEachPlayerMustWager;
     }
 
     mapping (bytes32 => Game) rockPaperScissorsGame;
@@ -69,12 +69,12 @@ contract RockPaperScissors is ActiveState {
     function getGameDetails(bytes32 hashValue) public view 
         returns (   uint gameProgression, 
                     uint gameDeadline, 
-                    uint minimumEachPlayerMustWager
+                    uint amountEachPlayerMustWager
                 ) {        
         Game storage gameRecord = rockPaperScissorsGame[hashValue];
         return (uint(gameRecord.gameProgression),
                 gameRecord.gameDeadline,
-                gameRecord.minimumEachPlayerMustWager
+                gameRecord.amountEachPlayerMustWager
             );
     }
 
@@ -97,7 +97,7 @@ contract RockPaperScissors is ActiveState {
         return (gameDuration);
     }
 
-    function initiateGame(address opponent, bytes32 gameKeyword, uint minimumEachPlayerMustWager) public returns (bool success) {
+    function initiateGame(address opponent, bytes32 gameKeyword, uint amountEachPlayerMustWager) public returns (bool success) {
         // All games between two accounts will have a unique hash value for identification purposes.
         bytes32 hashValue = getHashForUniqueGame(msg.sender,opponent,gameKeyword);
         Game storage gameRecord = rockPaperScissorsGame[hashValue];
@@ -105,9 +105,9 @@ contract RockPaperScissors is ActiveState {
 
         gameRecord.gameProgression = GameProgression.NoToolsSelected;
         gameRecord.gameDeadline = block.number + gameDuration;
-        gameRecord.minimumEachPlayerMustWager = minimumEachPlayerMustWager;
+        gameRecord.amountEachPlayerMustWager = amountEachPlayerMustWager;
 
-        LogInitiateGame(hashValue,msg.sender,gameRecord.gameDeadline,minimumEachPlayerMustWager);
+        LogInitiateGame(hashValue,msg.sender,gameRecord.gameDeadline,amountEachPlayerMustWager);
 
         return (true);
     }
@@ -122,16 +122,18 @@ contract RockPaperScissors is ActiveState {
         Game storage gameRecord = rockPaperScissorsGame[hashValue];
         //  They may elect to wager ether from their previous winnings to this game.
         require(amountToWagerFromPreviousWinnings <= winnings[msg.sender]);
-        uint totalToWager = amountToWagerFromPreviousWinnings + msg.value;
-        require(totalToWager >= gameRecord.minimumEachPlayerMustWager);
         winnings[msg.sender] -= amountToWagerFromPreviousWinnings;
+        uint totalToWager = amountToWagerFromPreviousWinnings + msg.value;
+        require(totalToWager == gameRecord.amountEachPlayerMustWager);
 
         // Previous secret code and tool combo cannnot be used again.
         require(usedSecretCodes[hiddenTool] == false);
         usedSecretCodes[hiddenTool] = true;
 
         require(gameRecord.gameProgression == GameProgression.NoToolsSelected || gameRecord.gameProgression == GameProgression.OnePlayerPickedHiddenTool);
+        require(gameRecord.gameDeadline > block.number);
         require(gameRecord.playerChoice[msg.sender].hiddenToolChoice == 0x0);
+        gameRecord.playerChoice[msg.sender].hiddenToolChoice = hiddenTool;
         if (gameRecord.gameProgression == GameProgression.NoToolsSelected)
         {
             gameRecord.gameProgression = GameProgression.OnePlayerPickedHiddenTool;
@@ -140,9 +142,7 @@ contract RockPaperScissors is ActiveState {
         {
             gameRecord.gameProgression = GameProgression.BothPlayersPickedHiddenTool;
         }
-        require(gameRecord.gameDeadline > block.number);
-
-        gameRecord.playerChoice[msg.sender].hiddenToolChoice = hiddenTool;
+        
         gameRecord.playerChoice[msg.sender].amount = totalToWager;   
 
         LogPickHiddenTool(hashValue, msg.sender, hiddenTool, totalToWager, uint(gameRecord.gameProgression));
@@ -164,6 +164,7 @@ contract RockPaperScissors is ActiveState {
 
         bytes32 hiddenToolChoice = gameRecord.playerChoice[msg.sender].hiddenToolChoice;
         require(getHashForSecretlyPickingTool(revealedTool,secretCode)==hiddenToolChoice);
+        require(gameRecord.playerChoice[msg.sender].toolChoice == uint(ToolChoice.notool));
         gameRecord.playerChoice[msg.sender].toolChoice = revealedTool;
  
         LogRevealHiddenTool(hashValue, msg.sender, uint(revealedTool));
@@ -217,7 +218,7 @@ contract RockPaperScissors is ActiveState {
         
         gameRecord.gameProgression = GameProgression.NoGameInProgress;
         gameRecord.gameDeadline = 0;
-        gameRecord.minimumEachPlayerMustWager = 0;
+        gameRecord.amountEachPlayerMustWager = 0;
         delete gameRecord.playerChoice[msg.sender];
         delete gameRecord.playerChoice[opponent];
         LogResetGame(hashValue);
